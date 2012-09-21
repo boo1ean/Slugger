@@ -1,0 +1,9 @@
+<resources>
+
+    <string name="app_name">Slugger</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="HOST_ADDRESS">192.168.0.49</string>
+	<string name="HOST_PORT">9595</string>
+</resources>
