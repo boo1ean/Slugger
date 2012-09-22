@@ -8,12 +8,14 @@ class QPushButton;
 class QTcpServer;
 class QNetworkSession;
 class QTcpSocket;
+class QTimeLine;
+class QGraphicsItemAnimation;
 QT_END_NAMESPACE
 
 class MainWindow : public QGraphicsView
 {
     Q_OBJECT
-    
+
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -26,14 +28,20 @@ private slots:
     void sessionOpened();
     void startConnection();
     void moveRect();
+    void bounceBall();
 
 private:
     float * a;
+    unsigned halfWidth;
+    unsigned halfHeight;
 
     QTcpSocket          * clientConnection;
     QGraphicsScene      * scene;
     QGraphicsRectItem   * rect;
     QGraphicsPixmapItem * ball;
+
+    QTimeLine              * timer;
+    QGraphicsItemAnimation * animation;
 
     QTcpServer      * tcpServer;
     QNetworkSession * networkSession;

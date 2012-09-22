@@ -9,8 +9,8 @@
 #define SPEED        20
 
 enum {
-  BENDY_WIDTH  = 60,
-  BENDY_HEIGHT = 200
+    BENDY_WIDTH  = 60,
+    BENDY_HEIGHT = 200
 };
 
 enum {
@@ -22,120 +22,142 @@ enum {
 enum {X, Y, Z};
 
 MainWindow::MainWindow(QWidget *parent)
-  : QGraphicsView(parent)
+    : QGraphicsView(parent)
 {
-  scene = new QGraphicsScene;
-  scene->setBackgroundBrush(Qt::white);
+    scene = new QGraphicsScene;
+    scene->setBackgroundBrush(Qt::white);
 
-  setupViewport(new QGLWidget);
-  setScene(scene);
-  setAlignment(Qt::AlignLeft | Qt::AlignTop);
-  setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-  showMaximized();
+    setupViewport(new QGLWidget);
+    setScene(scene);
+    setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
+    showMaximized();
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  startServer();
+    startServer();
 }
 
 void MainWindow::startServer()
 {
-  rect = scene->addRect(0, 0, BENDY_WIDTH, BENDY_HEIGHT);
-  ball = scene->addPixmap(QPixmap("ball.png"));
+    rect = scene->addRect(0, 0, BENDY_WIDTH, BENDY_HEIGHT);
+    ball = scene->addPixmap(QPixmap("ball.png"));
 
-  // Move ball to the center
-  ball->setPos((width() - ball->pixmap().width()) / 2, (height() - ball->pixmap().height()) / 2);
+    halfWidth  = (width() - ball->pixmap().width()) / 2;
+    halfHeight = (height() - ball->pixmap().height()) / 2;
+    // Move ball to the center
+    ball->setPos(halfWidth, halfHeight);
 
-  rect->setBrush(Qt::black);
-  setBackgroundBrush(QBrush(QColor(BG_R, BG_G ,BG_B)));
+    rect->setBrush(Qt::black);
+    setBackgroundBrush(QBrush(QColor(BG_R, BG_G ,BG_B)));
 
-  QNetworkConfigurationManager manager;
-  if (manager.capabilities() & QNetworkConfigurationManager::NetworkSessionRequired) {
-    // Get saved network configuration
-    QSettings settings(QSettings::UserScope, QLatin1String("Trolltech"));
-    settings.beginGroup(QLatin1String("QtNetwork"));
-    const QString id = settings.value(QLatin1String("DefaultNetworkConfiguration")).toString();
-    settings.endGroup();
+    timer = new QTimeLine(1000);
+    connect(timer, SIGNAL(finished()), this, SLOT(bounceBall()));
 
-    // If the saved network configuration is not currently discovered use the system default
-    QNetworkConfiguration config = manager.configurationFromIdentifier(id);
-    if ((config.state() & QNetworkConfiguration::Discovered) !=
-      QNetworkConfiguration::Discovered) {
-      config = manager.defaultConfiguration();
+    animation = new QGraphicsItemAnimation;
+    animation->setItem(ball);
+    animation->setTimeLine(timer);
+
+    for (unsigned i = 0; i < halfWidth; ++i)
+        animation->setPosAt(i / (qreal)halfWidth, QPointF(ball->x() - i, ball->y()));
+
+    timer->start();
+
+    QNetworkConfigurationManager manager;
+    if (manager.capabilities() & QNetworkConfigurationManager::NetworkSessionRequired) {
+        // Get saved network configuration
+        QSettings settings(QSettings::UserScope, QLatin1String("Trolltech"));
+        settings.beginGroup(QLatin1String("QtNetwork"));
+        const QString id = settings.value(QLatin1String("DefaultNetworkConfiguration")).toString();
+        settings.endGroup();
+
+        // If the saved network configuration is not currently discovered use the system default
+        QNetworkConfiguration config = manager.configurationFromIdentifier(id);
+        if ((config.state() & QNetworkConfiguration::Discovered) !=
+            QNetworkConfiguration::Discovered) {
+            config = manager.defaultConfiguration();
+        }
+
+        networkSession = new QNetworkSession(config, this);
+        connect(networkSession, SIGNAL(opened()), this, SLOT(sessionOpened()));
+
+        networkSession->open();
+    } else {
+        sessionOpened();
     }
 
-    networkSession = new QNetworkSession(config, this);
-    connect(networkSession, SIGNAL(opened()), this, SLOT(sessionOpened()));
-
-    networkSession->open();
-  } else {
-    sessionOpened();
-  }
-
     connect(tcpServer, SIGNAL(newConnection()), this, SLOT(startConnection()));
-
     setWindowTitle(tr("Air Play"));
 }
 
-MainWindow::~MainWindow()
-{
-  
-}
-
-
 void MainWindow::sessionOpened()
 {
-  tcpServer = new QTcpServer(this);
-  if (!tcpServer->listen(QHostAddress::Any, DEFAULT_PORT)) {
-    QMessageBox::critical(this, tr("Slugger Server"),
-                tr("Unable to start the server: %1.")
-                .arg(tcpServer->errorString()));
-    close();
-    return;
-  }
-
-  QString ipAddress;
-  QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-  // use the first non-localhost IPv4 address
-  for (int i = 0; i < ipAddressesList.size(); ++i) {
-    if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
-      ipAddressesList.at(i).toIPv4Address()) {
-      ipAddress = ipAddressesList.at(i).toString();
-      break;
+    tcpServer = new QTcpServer(this);
+    if (!tcpServer->listen(QHostAddress::Any, DEFAULT_PORT)) {
+        QMessageBox::critical(this, tr("Slugger Server"),
+            tr("Unable to start the server: %1.").arg(tcpServer->errorString()));
+        close();
+        return;
     }
-  }
-  // if we did not find one, use IPv4 localhost
-  if (ipAddress.isEmpty())
-    ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
+
+    QString ipAddress;
+    QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
+
+    // Use the first non-localhost IPv4 address
+    for (int i = 0; i < ipAddressesList.size(); ++i) {
+        if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
+            ipAddressesList.at(i).toIPv4Address()) {
+            ipAddress = ipAddressesList.at(i).toString();
+            break;
+        }
+    }
+
+    // If we did not find one, use IPv4 localhost
+    if (ipAddress.isEmpty())
+        ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
 }
 
 void MainWindow::startConnection()
 {
-  qDebug() << "Connected";
+    qDebug() << "Connected";
 
-  clientConnection = tcpServer->nextPendingConnection();
-  connect(clientConnection, SIGNAL(disconnected()),
-      clientConnection, SLOT(deleteLater()));
+    clientConnection = tcpServer->nextPendingConnection();
 
-  // Execute moveRect method if there is new data in socket
-  connect(clientConnection, SIGNAL(readyRead()),
-      this, SLOT(moveRect()));
+    connect(clientConnection, SIGNAL(disconnected()),
+            clientConnection, SLOT(deleteLater()));
 
-  //connect(this, SIGNAL(updateRect(QRectF)), this, SLOT(updateSceneRect(QRectF)));
+    // Execute moveRect method if there is new data in socket
+    connect(clientConnection, SIGNAL(readyRead()),
+            this,             SLOT(moveRect()));
 }
 
 void MainWindow::moveRect()
 {
-  // Get x, y, z
-  QByteArray data = clientConnection->readAll();
-  a = (float*)data.data();
+    // Get x, y, z
+    QByteArray data = clientConnection->readAll();
+    a = (float*)data.data();
 
-  // qDebug() << a[0] << a[1] << a[2];
+    // qDebug() << a[X] << a[Y] << a[Z];
 
-  qDebug() << "Y: " << rect->y();
+    qDebug() << "Y: " << rect->y();
 
-  if ((a[Y] < 0 && rect->y() < 0) || (a[Y] > 0 && (rect->y() + BENDY_HEIGHT) > height())) {
-     qDebug() << "STOP";
-  } else {
-      rect->moveBy(0, a[Y] * SPEED);
-  }
-  //emit updateRect(QRectF(rect->x(), rect->y(), BENDY_WIDTH, BENDY_HEIGHT));
+    if ((a[Y] < 0 && rect->y() < 0) || (a[Y] > 0 && (rect->y() + BENDY_HEIGHT) > height())) {
+       qDebug() << "STOP";
+    } else {
+        rect->moveBy(0, a[Y] * SPEED);
+    }
 }
+
+void MainWindow::bounceBall()
+{
+    qreal sign = ball->x() == halfWidth ? -1.0 : 1.0;
+
+    qDebug() << "Bounce Ball | X: " << ball->x() << "Sign: " << sign;
+
+    for (unsigned i = 0; i < halfWidth; ++i)
+        animation->setPosAt(i / (qreal)halfWidth, QPointF(ball->x() + i * sign, ball->y()));
+
+    timer->start();
+}
+
+MainWindow::~MainWindow() { }
