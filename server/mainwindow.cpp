@@ -7,6 +7,8 @@
 
 #define DEFAULT_PORT 9595
 
+enum {X, Y, Z};
+
 MainWindow::MainWindow(QWidget *parent)
   : QGraphicsView(parent)
 {
@@ -19,6 +21,8 @@ MainWindow::MainWindow(QWidget *parent)
   scene->addWidget(button);
 
   setScene(scene);
+
+  startServer();
 
   connect(button, SIGNAL(clicked()), this, SLOT(startServer()));
 }
@@ -67,21 +71,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::sessionOpened()
 {
-  // Save the used configuration
-  if (networkSession) {
-    QNetworkConfiguration config = networkSession->configuration();
-    QString id;
-    if (config.type() == QNetworkConfiguration::UserChoice)
-      id = networkSession->sessionProperty(QLatin1String("UserChoiceConfiguration")).toString();
-    else
-      id = config.identifier();
-
-    QSettings settings(QSettings::UserScope, QLatin1String("Trolltech"));
-    settings.beginGroup(QLatin1String("QtNetwork"));
-    settings.setValue(QLatin1String("DefaultNetworkConfiguration"), id);
-    settings.endGroup();
-  }
-
   tcpServer = new QTcpServer(this);
   if (!tcpServer->listen(QHostAddress::Any, DEFAULT_PORT)) {
     QMessageBox::critical(this, tr("Slugger Server"),
@@ -121,8 +110,13 @@ void MainWindow::startConnection()
 
 void MainWindow::moveRect()
 {
+  // Get x, y, z
   QByteArray data = clientConnection->readAll();
+  a = (float*)data.data();
 
+  qDebug() << a[0] << a[1] << a[2];
+
+  rect->moveBy(a[Y] * 10, 0);
   // Now you have floats in LE (converted to LE on devices)
 
   #if Q_BYTE_ORDER == Q_BIG_ENDIAN

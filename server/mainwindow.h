@@ -25,13 +25,15 @@ private slots:
     void moveRect();
 
 private:
+    float * a;
+
     QTcpSocket        * clientConnection;
     QGraphicsScene    * scene;
     QPushButton       * button;
     QGraphicsRectItem * rect;
 
-    QTcpServer *tcpServer;
-    QNetworkSession *networkSession;
+    QTcpServer      * tcpServer;
+    QNetworkSession * networkSession;
 };
 
 #endif // MAINWINDOW_H
