@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
         if (connection.isConnected()) {
             dataOutputStream = new DataOutputStream(connection.getOutputStream());
             accReader = new AccReader();
-            mSensorManager.registerListener(accReader, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+            mSensorManager.registerListener(accReader, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
         }
 
       } catch (UnknownHostException e) {
@@ -79,9 +79,9 @@ public class MainActivity extends Activity {
           return;
 
         ByteBuffer bb = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN);
-        bb.putFloat(event.values[0]);
-        bb.putFloat(event.values[1]);
-        bb.putFloat(event.values[2]);
+        bb.putFloat(event.values[0] / SensorManager.GRAVITY_EARTH);
+        bb.putFloat(event.values[1] / SensorManager.GRAVITY_EARTH);
+        bb.putFloat(event.values[2] / SensorManager.GRAVITY_EARTH);
 
         try {
           dataOutputStream.write(bb.array());
