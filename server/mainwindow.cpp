@@ -1,39 +1,51 @@
 #include "mainwindow.h"
 
 #include <QtGui>
-#include <QPushButton>
 #include <QtNetwork>
 #include <QtEndian>
+#include <QtOpenGL/QGLWidget>
 
 #define DEFAULT_PORT 9595
+#define SPEED        20
+
+enum {
+  BENDY_WIDTH  = 60,
+  BENDY_HEIGHT = 200
+};
+
+enum {
+    BG_R = 138,
+    BG_G = 199,
+    BG_B = 59
+};
 
 enum {X, Y, Z};
 
 MainWindow::MainWindow(QWidget *parent)
   : QGraphicsView(parent)
 {
-  scene = new QGraphicsScene(100, 100, 100, 100);
+  scene = new QGraphicsScene;
   scene->setBackgroundBrush(Qt::white);
 
-  button = new QPushButton("Start server");
-  button->resize(200, 200);
-
-  scene->addWidget(button);
-
+  setupViewport(new QGLWidget);
   setScene(scene);
+  setAlignment(Qt::AlignLeft | Qt::AlignTop);
+  setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
+  showMaximized();
 
   startServer();
-
-  connect(button, SIGNAL(clicked()), this, SLOT(startServer()));
 }
 
 void MainWindow::startServer()
 {
-  button->hide();
+  rect = scene->addRect(0, 0, BENDY_WIDTH, BENDY_HEIGHT);
+  ball = scene->addPixmap(QPixmap("ball.png"));
 
-  rect = scene->addRect(100, 100, 100, 100);
+  // Move ball to the center
+  ball->setPos((width() - ball->pixmap().width()) / 2, (height() - ball->pixmap().height()) / 2);
+
   rect->setBrush(Qt::black);
-
+  setBackgroundBrush(QBrush(QColor(BG_R, BG_G ,BG_B)));
 
   QNetworkConfigurationManager manager;
   if (manager.capabilities() & QNetworkConfigurationManager::NetworkSessionRequired) {
@@ -106,6 +118,8 @@ void MainWindow::startConnection()
   // Execute moveRect method if there is new data in socket
   connect(clientConnection, SIGNAL(readyRead()),
       this, SLOT(moveRect()));
+
+  //connect(this, SIGNAL(updateRect(QRectF)), this, SLOT(updateSceneRect(QRectF)));
 }
 
 void MainWindow::moveRect()
@@ -114,18 +128,14 @@ void MainWindow::moveRect()
   QByteArray data = clientConnection->readAll();
   a = (float*)data.data();
 
-  qDebug() << a[0] << a[1] << a[2];
+  // qDebug() << a[0] << a[1] << a[2];
 
-  rect->moveBy(a[Y] * 10, 0);
-  // Now you have floats in LE (converted to LE on devices)
+  qDebug() << "Y: " << rect->y();
 
-  #if Q_BYTE_ORDER == Q_BIG_ENDIAN
-
-  #else
-
-  #endif
-
-  /**
-   * Here you can use rect->moveBy(x, y) to move rect.
-   */
+  if ((a[Y] < 0 && rect->y() < 0) || (a[Y] > 0 && (rect->y() + BENDY_HEIGHT) > height())) {
+     qDebug() << "STOP";
+  } else {
+      rect->moveBy(0, a[Y] * SPEED);
+  }
+  //emit updateRect(QRectF(rect->x(), rect->y(), BENDY_WIDTH, BENDY_HEIGHT));
 }

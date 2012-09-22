@@ -18,6 +18,9 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+signals:
+    void updateRect(QRectF);
+
 private slots:
     void startServer();
     void sessionOpened();
@@ -27,10 +30,10 @@ private slots:
 private:
     float * a;
 
-    QTcpSocket        * clientConnection;
-    QGraphicsScene    * scene;
-    QPushButton       * button;
-    QGraphicsRectItem * rect;
+    QTcpSocket          * clientConnection;
+    QGraphicsScene      * scene;
+    QGraphicsRectItem   * rect;
+    QGraphicsPixmapItem * ball;
 
     QTcpServer      * tcpServer;
     QNetworkSession * networkSession;

@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network
+QT       += core gui network opengl
 
 TARGET = GraphicView
 TEMPLATE = app
@@ -14,3 +14,6 @@ SOURCES += main.cpp\
         mainwindow.cpp
 
 HEADERS  += mainwindow.h
+
+RESOURCES += \
+    tiles.qrc
