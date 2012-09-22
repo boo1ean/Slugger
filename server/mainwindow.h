@@ -30,6 +30,8 @@ private slots:
     void moveRect();
     void bounceBall();
 
+    void greatings();
+
 private:
     float * a;
     unsigned halfWidth;

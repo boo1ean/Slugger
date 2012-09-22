@@ -5,8 +5,9 @@
 #include <QtEndian>
 #include <QtOpenGL/QGLWidget>
 
-#define DEFAULT_PORT 9595
-#define SPEED        20
+#define GREATINGS_TIME 1500
+#define DEFAULT_PORT   9595
+#define SPEED          20
 
 enum {
     BENDY_WIDTH  = 60,
@@ -87,6 +88,7 @@ void MainWindow::startServer()
     }
 
     connect(tcpServer, SIGNAL(newConnection()), this, SLOT(startConnection()));
+    connect(tcpServer, SIGNAL(newConnection()), this, SLOT(greatings()));
     setWindowTitle(tr("Air Play"));
 }
 
@@ -158,6 +160,28 @@ void MainWindow::bounceBall()
         animation->setPosAt(i / (qreal)halfWidth, QPointF(ball->x() + i * sign, ball->y()));
 
     timer->start();
+}
+
+void MainWindow::greatings()
+{
+    QGraphicsTextItem * text = scene->addText("Welcome to the game!", QFont("sans-serif", 80));
+    text->setPos(200, 200);
+    text->setDefaultTextColor(Qt::white);
+
+    QTimeLine * textTimer = new QTimeLine(GREATINGS_TIME);
+
+    QGraphicsItemAnimation * textAnimation = new QGraphicsItemAnimation;
+    textAnimation->setItem(text);
+    textAnimation->setTimeLine(textTimer);
+
+    for (unsigned i = 0; i < 10; ++i)
+        textAnimation->setScaleAt(i / (qreal) 10, i, i);
+
+    connect(textTimer, SIGNAL(finished()), text, SLOT(deleteLater()));
+    connect(textTimer, SIGNAL(finished()), textAnimation, SLOT(deleteLater()));
+    connect(textTimer, SIGNAL(finished()), textTimer, SLOT(deleteLater()));
+
+    textTimer->start();
 }
 
 MainWindow::~MainWindow() { }
