@@ -13,10 +13,10 @@ using Microsoft.Phone.Controls;
 
 namespace AirHockey.Client.WinPhone
 {
-    public partial class MainPage : PhoneApplicationPage
+    public partial class ConnectionPage : PhoneApplicationPage
     {
         // Constructor
-        public MainPage()
+        public ConnectionPage()
         {
             InitializeComponent();
         }
